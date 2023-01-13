@@ -42,6 +42,31 @@ modifiers = {
         name = "Everyone is shaman",
         description = "Everyone is shaman!",
         incompatibilities = {}
+    },
+    discoMode = {
+        name = "Disco Mode",
+        description = "Makes player names and map background change colors.",
+        incompatibilities = {}
+    },
+    newYear = {
+        name = "Is this the new year?",
+        description = "Creates explosions in random places.",
+        incompatibilities = {}
+    },
+    mouseTrain = {
+        name = "Mouse Train",
+        description = "All mice are linked together in random order.",
+        incompatibilities = {}
+    },
+    meep = {
+        name = "Meep!",
+        description = "Gives everyone meep.",
+        incompatibilities = {}
+    },
+    transformations = {
+        name = "Transformations",
+        description = "Gives everyone the power of transformation.",
+        incompatibilities = {}
     }
 }
 
@@ -54,6 +79,14 @@ math.randomseed(os.time())
 
 activeModifiers = {}
 
+table.shuffle = function(table)
+    for i = #table, 2, -1 do
+        local j = math.random(i)
+        table[i], table[j] = table[j], table[i]
+    end
+    return table
+end
+
 function eventChatCommand(playerName, message)
     local args = {}
     for arg in message:gmatch("%S+") do
@@ -64,6 +97,8 @@ end
 
 function initPlayer(playerName)
     ui.addPopup(1, 0, "<p align='center'><font size='16'>Welcome to <b>Wacknilla</b>!</font></p>\nThis module is almost like normal vanilla.\nThe difference is that every round will have random modifiers added to it.", playerName, 250, 150, 300, true)
+    ui.addTextArea(1, 'Active modifiers', playerName, 625, 25, 165, 25, 0x101010, 0, 0.5, true)
+    updateActiveModifiersList(playerName)
 end
 
 function eventNewPlayer(playerName)
@@ -79,9 +114,26 @@ function eventPlayerDied(playerName)
     end
 end
 
+function updateActiveModifiersList(playerName) 
+    ui.updateTextArea(1, string.format('<a href="event:activeModifiers"><p align="center"><font color="#FF8547" size="14"><b>Active modifiers (%d)</b></font></p>', #activeModifiers), playerName)
+end
+
 function eventLoop(currentTime, timeRemaining)
     if timeRemaining <= 0 then
         startNewRound()
+    else
+        if isModifierActive('discoMode') then
+            local color = math.random(0, 0xFFFFFF)
+            for playerName, playerData in pairs(tfm.get.room.playerList) do
+                tfm.exec.setNameColor(playerName, color)
+            end
+            ui.setBackgroundColor(string.format("#%06X", color))
+        end
+        if isModifierActive('newYear') and math.random(1, 2) == 1 then
+            local x, y = math.random(0, 800), math.random(0, 400)
+            tfm.exec.explosion(x, y, 10, 80, false)
+            tfm.exec.displayParticle(10, x, y, 0, 0, 0, 0, nil)
+        end
     end
 end
 
@@ -104,23 +156,44 @@ function isModifierActive(modifierName)
 end
 
 function eventNewGame()
+    local playerNames = {}
     for player, playerData in pairs(tfm.get.room.playerList) do
         if isModifierActive('miniMice') then
             tfm.exec.changePlayerSize(player, 0.4)
         elseif isModifierActive('hugeMice') then
             tfm.exec.changePlayerSize(player, 2.5)
+        else
+            tfm.exec.changePlayerSize(player, 1.0)
         end
 
         if isModifierActive('everyoneIsShaman') then
             tfm.exec.setShaman(player, true)
             ui.setShamanName('Everyone!')
+        elseif isModifierActive('transformations') then
+            tfm.exec.giveTransformations(player, true)
+        end
+
+        if isModifierActive('meep') then
+            tfm.exec.giveMeep(player, true)
+        end
+
+        updateActiveModifiersList(playerName)
+        playerNames[#playerNames + 1] = player
+    end
+
+    if isModifierActive('mouseTrain') then
+        table.shuffle(playerNames)
+        for i = 1, #playerNames - 1 do
+            --leaderPlayerData = tfm.get.room.playerList[playerNames[#playerNames]]
+            --tfm.exec.movePlayer(playerNames[i], leaderPlayerData.x, leaderPlayerData.y, false, 0, 0, true)
+            tfm.exec.linkMice(playerNames[i], playerNames[i + 1], true)
         end
     end
 end
 
 function canAddModifier(modifierName)
     for i, modifier in ipairs(activeModifiers) do
-        if modifer == modifierName then
+        if modifier == modifierName then
             return false
         end
         for j, incompatibility in ipairs(modifiers[modifier].incompatibilities) do
@@ -161,6 +234,31 @@ function getMiceAlive()
         end
     end
     return playersAlive
+end
+
+function openActiveModifiersWindow(playerName)
+
+    local textAreaText = '<p align="center"><font size="18" color="#BABD2F"><b>Active modifiers</b></font></p>'
+
+    for i, modifier in ipairs(activeModifiers) do
+        textAreaText = textAreaText .. string.format('<p><font size="14">%s</font><br><font size="8" color="#AAAAAA">%s</p><br>', modifiers[modifier].name, modifiers[modifier].description)
+    end
+
+    ui.addTextArea(2, textAreaText, playerName, 150, 50, 500, 325, 0x101010, 0, 0.95, true)
+    ui.addTextArea(3, '<a href="event:closeActiveModifiersWindow"><p align="center"><font size="11" color="#000000"><b>X</b></font></p></a>', playerName, 625, 60, 15, 15, 0xFF0000, 0, 1.0, true)
+end
+
+function closeActiveModifiersWindow(playerName)
+    ui.removeTextArea(2, playerName)
+    ui.removeTextArea(3, playerName)
+end
+
+function eventTextAreaCallback(textAreaID, playerName, callback)
+    if callback == "activeModifiers" then
+        openActiveModifiersWindow(playerName)
+    elseif callback == "closeActiveModifiersWindow" then
+        closeActiveModifiersWindow(playerName)
+    end
 end
 
 tfm.exec.disableAutoNewGame(true)
