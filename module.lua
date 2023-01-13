@@ -67,6 +67,11 @@ modifiers = {
         name = "Transformations",
         description = "Gives everyone the power of transformation.",
         incompatibilities = {}
+    },
+    cantStopSitting = {
+        name = "Can't stop sitting",
+        description = "Makes everyone sit all the time.",
+        incompatibilities = {}
     }
 }
 
@@ -133,6 +138,12 @@ function eventLoop(currentTime, timeRemaining)
             local x, y = math.random(0, 800), math.random(0, 400)
             tfm.exec.explosion(x, y, 10, 80, false)
             tfm.exec.displayParticle(10, x, y, 0, 0, 0, 0, nil)
+        end
+        
+        if isModifierActive('cantStopSitting') then
+            for playerName, playerData in pairs(tfm.get.room.playerList) do
+                tfm.exec.playEmote(playerName, 8)
+            end
         end
     end
 end
