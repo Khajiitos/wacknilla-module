@@ -33,10 +33,12 @@ modifiers = {
         description = "All mice in the room are very big!",
         incompatibilities = { 'miniMice' }
     },
+    --[[
     randomGhostObjects = {
         name = "Random ghost objects",
         description = "Every object summoned by the shaman will be randomly ghosted or not.",
     },
+    ]]
     everyoneIsShaman = {
         name = "Everyone is shaman",
         description = "Everyone is shaman!",
@@ -88,6 +90,10 @@ modifiers = {
     fallDamage = {
         name = "Fall damage",
         description = "Mice die when they hit a ground too hard."
+    },
+    snowfall = {
+        name = "Snowfall",
+        description = "It's snowing! <font size='4'>(snowballs are buffed too!)</font>"
     }
 }
 
@@ -292,6 +298,12 @@ function eventNewGame()
 
     if isModifierActive('areWeInSpace') then
         tfm.exec.setWorldGravity(0, 2.5)
+    end
+
+    if (isModifierActive('snowfall')) then
+        tfm.exec.snow(120, 100)
+    else
+        tfm.exec.snow(0, 0)
     end
 end
 
