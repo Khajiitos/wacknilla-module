@@ -91,6 +91,17 @@ modifiers = {
     }
 }
 
+eventLoopTicks = 0
+scheduledFunctionCalls = {}
+
+function doLater(callback, ticksLater, forgetAfterNewRound)
+    scheduledFunctionCalls[#scheduledFunctionCalls + 1] = {
+        func = callback,
+        tick = eventLoopTicks + ticksLater,
+        forgetAfterNewRound = forgetAfterNewRound
+    }
+end
+
 modifierNames = {}
 for modifierName, _ in pairs(modifiers) do
     modifierNames[#modifierNames + 1] = modifierName
@@ -107,14 +118,6 @@ table.shuffle = function(table)
         table[i], table[j] = table[j], table[i]
     end
     return table
-end
-
-function eventChatCommand(playerName, message)
-    local args = {}
-    for arg in message:gmatch("%S+") do
-        args[#args + 1] = arg
-    end
-    local command = table.remove(args, 1)
 end
 
 function initPlayer(playerName)
@@ -171,6 +174,16 @@ function updateActiveModifiersList(playerName)
 end
 
 function eventLoop(currentTime, timeRemaining)
+
+    for i, scheduledFunctionCall in ipairs(scheduledFunctionCalls) do
+        if eventLoopTicks >= scheduledFunctionCall.tick then
+            scheduledFunctionCall.func()
+            table.remove(scheduledFunctionCalls, i)
+        end
+    end
+
+    eventLoopTicks = eventLoopTicks + 1
+
     if timeRemaining <= 0 then
         startNewRound()
     else
@@ -219,6 +232,13 @@ function isModifierActive(modifierName)
 end
 
 function eventNewGame()
+
+    for i, scheduledFunctionCall in ipairs(scheduledFunctionCalls) do
+        if scheduledFunctionCall.forgetAfterNewRound then
+            table.remove(scheduledFunctionCalls, i)
+        end
+    end
+
     playersInHole = 0
     local playerNames = {}
     for player, playerData in pairs(tfm.get.room.playerList) do
@@ -261,8 +281,9 @@ function eventNewGame()
     end
 
     if isModifierActive('theresAVampireAmongUs') then
-        -- this really should be delayed
-        tfm.exec.setVampirePlayer(playerNames[math.random(1, #playerNames)], true)
+        doLater(function()
+            tfm.exec.setVampirePlayer(playerNames[math.random(1, #playerNames)], true)
+        end, 10, true)
     end
 
     if isModifierActive('fallDamage') then
@@ -290,7 +311,7 @@ function canAddModifier(modifierName)
     return true
 end
 
-function startNewRound()
+function startNewRound(forcedModifiers)
     activeModifiers = {}
 
     local iterations = math.random(1, math.min(3, #modifierNames))
@@ -301,6 +322,13 @@ function startNewRound()
             activeModifiers[#activeModifiers + 1] = pickedModifier
         end
     end
+
+    if forcedModifiers then
+        for i, forcedModifier in pairs(forcedModifiers) do
+            activeModifiers[#activeModifiers + 1] = forcedModifier
+        end
+    end
+
     clearMice()
     tfm.exec.disableAllShamanSkills(isModifierActive('skilllessDivine'))
     tfm.exec.setGameTime(2, true)
@@ -348,9 +376,21 @@ function eventTextAreaCallback(textAreaID, playerName, callback)
 end
 
 function eventChatCommand(playerName, message)
+    local args = {}
+    for arg in message:gmatch("%S+") do
+        args[#args + 1] = arg
+    end
+    local command = table.remove(args, 1)
+
     -- for debugging purposes
-    if message == "nr" then
-        startNewRound()
+    if command == "nr" then
+        local forcedModifiers = {}
+        for i, arg in ipairs(args) do
+            if modifiers[arg] then
+                forcedModifiers[#forcedModifiers + 1] = arg
+            end
+        end
+        startNewRound(forcedModifiers)
     end
 end
 
