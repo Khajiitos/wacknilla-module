@@ -36,43 +36,51 @@ modifiers = {
     randomGhostObjects = {
         name = "Random ghost objects",
         description = "Every object summoned by the shaman will be randomly ghosted or not.",
-        incompatibilities = {}
     },
     everyoneIsShaman = {
         name = "Everyone is shaman",
         description = "Everyone is shaman!",
-        incompatibilities = {}
     },
     discoMode = {
         name = "Disco Mode",
         description = "Makes player names and map background change colors.",
-        incompatibilities = {}
     },
     newYear = {
         name = "Is this the new year?",
         description = "Creates explosions in random places.",
-        incompatibilities = {}
     },
     mouseTrain = {
         name = "Mouse Train",
         description = "All mice are linked together in random order.",
-        incompatibilities = {}
     },
     meep = {
         name = "Meep!",
         description = "Gives everyone meep.",
-        incompatibilities = {}
     },
     transformations = {
         name = "Transformations",
         description = "Gives everyone the power of transformation.",
-        incompatibilities = {}
     },
     cantStopSitting = {
         name = "Can't stop sitting",
         description = "Makes everyone sit all the time.",
-        incompatibilities = {}
-    }
+    },
+    conjurationRain = {
+        name = "It's raining conjuration",
+        description = "Randomly spawns conjuration in random places (the gray squares that shammies can sometimes draw with)",
+    },
+    mapFlip = {
+        name = "Map flip",
+        description = "The map is flipped.",
+    },
+    skilllessDivine = {
+        name = "Skillless Divine",
+        description = "Sets the shaman(s) mode to divine without skills."
+    },
+    areWeInSpace = {
+        name = "Are we in space?",
+        description = "Sets the gravity very low."
+    },
 }
 
 modifierNames = {}
@@ -119,6 +127,17 @@ function eventPlayerDied(playerName)
     end
 end
 
+function clearMice()
+    for player, playerData in pairs(tfm.get.room.playerList) do
+        tfm.exec.giveTransformations(player, false)
+        for player2, playerData2 in pairs(tfm.get.room.playerList) do
+            if player ~= player2 then
+                tfm.exec.linkMice(player, player2, false)
+            end
+        end
+    end
+end
+
 function updateActiveModifiersList(playerName) 
     ui.updateTextArea(1, string.format('<a href="event:activeModifiers"><p align="center"><font color="#FF8547" size="14"><b>Active modifiers (%d)</b></font></p>', #activeModifiers), playerName)
 end
@@ -138,6 +157,11 @@ function eventLoop(currentTime, timeRemaining)
             local x, y = math.random(0, 800), math.random(0, 400)
             tfm.exec.explosion(x, y, 10, 80, false)
             tfm.exec.displayParticle(10, x, y, 0, 0, 0, 0, nil)
+        end
+
+        if isModifierActive('conjurationRain') and math.random(1, 2) == 1 then
+            local x, y = math.random(0, 80), math.random(0, 40)
+            tfm.exec.addConjuration(x, y, 8000)
         end
         
         if isModifierActive('cantStopSitting') then
@@ -184,6 +208,12 @@ function eventNewGame()
             tfm.exec.giveTransformations(player, true)
         end
 
+        if isModifierActive('skilllessDivine') then
+            tfm.exec.setShamanMode(player, 2)
+        else 
+            tfm.exec.setShamanMode(player, nil)
+        end
+
         if isModifierActive('meep') then
             tfm.exec.giveMeep(player, true)
         end
@@ -195,7 +225,7 @@ function eventNewGame()
     if isModifierActive('mouseTrain') then
         table.shuffle(playerNames)
         for i = 1, #playerNames - 1 do
-            --leaderPlayerData = tfm.get.room.playerList[playerNames[#playerNames]]
+            --leaderPlayerData = tfm.get.room.  playerList[playerNames[#playerNames]]
             --tfm.exec.movePlayer(playerNames[i], leaderPlayerData.x, leaderPlayerData.y, false, 0, 0, true)
             tfm.exec.linkMice(playerNames[i], playerNames[i + 1], true)
         end
@@ -207,9 +237,11 @@ function canAddModifier(modifierName)
         if modifier == modifierName then
             return false
         end
-        for j, incompatibility in ipairs(modifiers[modifier].incompatibilities) do
-            if incompatibility == modifierName then
-                return false
+        if modifiers[modifier].incompatibilities then
+            for j, incompatibility in ipairs(modifiers[modifier].incompatibilities) do
+                if incompatibility == modifierName then
+                    return false
+                end
             end
         end
     end
@@ -219,7 +251,7 @@ end
 function startNewRound()
     activeModifiers = {}
 
-    local iterations = math.random(1, #modifierNames)
+    local iterations = math.random(1, math.min(3, #modifierNames))
 
     for i = 1, iterations do
         local pickedModifier = modifierNames[math.random(1, #modifierNames)]
@@ -227,8 +259,10 @@ function startNewRound()
             activeModifiers[#activeModifiers + 1] = pickedModifier
         end
     end
+    clearMice()
+    tfm.exec.disableAllShamanSkills(isModifierActive('skilllessDivine'))
     tfm.exec.setGameTime(2, true)
-    tfm.exec.newGame(maps[math.random(0, #maps)])
+    tfm.exec.newGame(maps[math.random(0, #maps)], isModifierActive('mapFlip'))
 end
 
 function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
