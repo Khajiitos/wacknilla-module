@@ -81,6 +81,14 @@ modifiers = {
         name = "Are we in space?",
         description = "Sets the gravity very low."
     },
+    theresAVampireAmongUs = {
+        name = "There's a vampire among us",
+        description = "A random player becomes a vampire."
+    },
+    fallDamage = {
+        name = "Fall damage",
+        description = "Mice die when they hit a ground too hard."
+    }
 }
 
 modifierNames = {}
@@ -91,6 +99,7 @@ end
 math.randomseed(os.time())
 
 activeModifiers = {}
+playersInHole = 0
 
 table.shuffle = function(table)
     for i = #table, 2, -1 do
@@ -121,7 +130,26 @@ function eventNewPlayer(playerName)
     end
 end
 
+function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
+    local playerData = tfm.get.room.playerList[playerName] 
+    if playersInHole == 0 then
+        tfm.exec.setPlayerScore(playerName, 16, true)
+        tfm.exec.displayParticle(19, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
+    elseif playersInHole == 1 then
+        tfm.exec.setPlayerScore(playerName, 14, true)
+        tfm.exec.displayParticle(18, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
+    elseif playersInHole == 2 then
+        tfm.exec.setPlayerScore(playerName, 12, true)
+        tfm.exec.displayParticle(17, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
+    else
+        tfm.exec.setPlayerScore(playerName, 10, true)
+        tfm.exec.displayParticle(16, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
+    end
+    playersInHole = playersInHole + 1
+end
+
 function eventPlayerDied(playerName)
+    tfm.exec.setPlayerScore(playerName, 1, true)
     if getMiceAlive() == 0 then
         startNewRound()
     end
@@ -191,6 +219,7 @@ function isModifierActive(modifierName)
 end
 
 function eventNewGame()
+    playersInHole = 0
     local playerNames = {}
     for player, playerData in pairs(tfm.get.room.playerList) do
         if isModifierActive('miniMice') then
@@ -229,6 +258,19 @@ function eventNewGame()
             --tfm.exec.movePlayer(playerNames[i], leaderPlayerData.x, leaderPlayerData.y, false, 0, 0, true)
             tfm.exec.linkMice(playerNames[i], playerNames[i + 1], true)
         end
+    end
+
+    if isModifierActive('theresAVampireAmongUs') then
+        -- this really should be delayed
+        tfm.exec.setVampirePlayer(playerNames[math.random(1, #playerNames)], true)
+    end
+
+    if isModifierActive('fallDamage') then
+        tfm.exec.setAieMode(true, 5, nil)
+    end
+
+    if isModifierActive('areWeInSpace') then
+        tfm.exec.setWorldGravity(0, 2.5)
     end
 end
 
@@ -282,7 +324,6 @@ function getMiceAlive()
 end
 
 function openActiveModifiersWindow(playerName)
-
     local textAreaText = '<p align="center"><font size="18" color="#BABD2F"><b>Active modifiers</b></font></p>'
 
     for i, modifier in ipairs(activeModifiers) do
@@ -306,7 +347,15 @@ function eventTextAreaCallback(textAreaID, playerName, callback)
     end
 end
 
+function eventChatCommand(playerName, message)
+    -- for debugging purposes
+    if message == "nr" then
+        startNewRound()
+    end
+end
+
 tfm.exec.disableAutoNewGame(true)
+tfm.exec.disableAutoScore(true) -- The auto score system doesn't work for some reason anyway, so we're going to immitate it
 
 for playerName in pairs(tfm.get.room.playerList) do
     initPlayer(playerName)
