@@ -120,6 +120,13 @@ modifiers = {
         playerRoundData = {
             lastSquatted = -1
         }
+    },
+    mouseArchery = {
+        name = "Mouse archery",
+        description = "You can shoot arrows by pressing Q!",
+        playerRoundData = {
+            lastShotArrow = -1
+        }
     }
 }
 playerRoundData = {}
@@ -181,6 +188,7 @@ function initPlayer(playerName)
     updateActiveModifiersList(playerName)
     system.bindKeyboard(playerName, 32, true, true) -- Space
     system.bindKeyboard(playerName, 3, true, true) -- S + Down arrow
+    system.bindKeyboard(playerName, 81, true, true) -- Q
     resetPlayerRoundData(playerName)
 end
 
@@ -462,6 +470,15 @@ function eventKeyboard(playerName, keyCode, down, xPlayerPosition, yPlayerPositi
     elseif keyCode == 3 then -- S + Down arrow
         if isModifierActive('squatBeforeYouDie') then
             playerRoundData[playerName].squatBeforeYouDie.lastSquatted = os.time()
+        end
+    elseif keyCode == 81 then -- Q
+        if isModifierActive('mouseArchery') and playerRoundData[playerName].mouseArchery.lastShotArrow + 5000 <= os.time() then
+            if tfm.get.room.playerList[playerName].isFacingRight then
+                tfm.exec.addShamanObject(35, xPlayerPosition + 20, yPlayerPosition, 0, 50, 0, false)
+            else
+                tfm.exec.addShamanObject(35, xPlayerPosition - 20, yPlayerPosition, 180, -50, 0, false)
+            end
+            playerRoundData[playerName].mouseArchery.lastShotArrow = os.time()
         end
     end
 end
