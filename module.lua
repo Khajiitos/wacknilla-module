@@ -67,6 +67,7 @@ modifiers = {
     cantStopSitting = {
         name = "Can't stop sitting",
         description = "Makes everyone sit all the time.",
+        incompatibilities = { 'squatBeforeYouDie' }
     },
     conjurationRain = {
         name = "It's raining conjuration",
@@ -110,6 +111,14 @@ modifiers = {
         description = "You get to respawn once after you die.",
         playerRoundData = {
             alreadyRespawned = false
+        }
+    },
+    squatBeforeYouDie = {
+        name = "Squat before you die!",
+        description = "You die if you don't squat at least once every 5 seconds.",
+        incompatibilities = { 'cantStopSitting' },
+        playerRoundData = {
+            lastSquatted = -1
         }
     }
 }
@@ -171,6 +180,7 @@ function initPlayer(playerName)
     ui.addTextArea(1, 'Active modifiers', playerName, 625, 25, 165, 25, 0x101010, 0, 0.5, true)
     updateActiveModifiersList(playerName)
     system.bindKeyboard(playerName, 32, true, true) -- Space
+    system.bindKeyboard(playerName, 3, true, true) -- S + Down arrow
     resetPlayerRoundData(playerName)
 end
 
@@ -263,6 +273,22 @@ function eventLoop(currentTime, timeRemaining)
                 tfm.exec.playEmote(playerName, 8)
             end
         end
+
+        if isModifierActive('squatBeforeYouDie') then
+            for playerName, playerData in pairs(tfm.get.room.playerList) do
+                if playerRoundData[playerName].squatBeforeYouDie.lastSquatted == -1 then
+                    playerRoundData[playerName].squatBeforeYouDie.lastSquatted = os.time()
+                elseif playerRoundData[playerName].squatBeforeYouDie.lastSquatted + 5000 <= os.time() then
+                    tfm.exec.killPlayer(playerName)
+                end
+            end
+        end
+    end
+end
+
+function eventPlayerRespawn(playerName)
+    if isModifierActive('squatBeforeYouDie') then
+        playerRoundData[playerName].squatBeforeYouDie.lastSquatted = os.time()
     end
 end
 
@@ -372,6 +398,13 @@ function eventNewGame()
         end
         doLater(itsColdOutHereLoopFunc, 10, true)
     end
+
+    if isModifierActive('squatBeforeYouDie') then 
+        ui.addTextArea(4, "<p align='center' size='24'><font color='#000000'><b>Squat before you die!</b></font></p>", nil, 200, 375, 400, 25, nil, nil, 0.0, true)
+        doLater(function()
+            ui.removeTextArea(4, nil)
+        end, 8, true)
+    end
 end
 
 function canAddModifier(modifierName)
@@ -425,6 +458,10 @@ function eventKeyboard(playerName, keyCode, down, xPlayerPosition, yPlayerPositi
         if isModifierActive('miceCanFly') then
             tfm.exec.movePlayer(playerName, 0, 0, true, 0, -60.0, false)
             tfm.exec.displayParticle(3, xPlayerPosition, yPlayerPosition, 0, 0.4, 0, 0, nil)
+        end
+    elseif keyCode == 3 then -- S + Down arrow
+        if isModifierActive('squatBeforeYouDie') then
+            playerRoundData[playerName].squatBeforeYouDie.lastSquatted = os.time()
         end
     end
 end
