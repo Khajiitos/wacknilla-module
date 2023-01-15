@@ -127,6 +127,10 @@ modifiers = {
         playerRoundData = {
             lastShotArrow = -1
         }
+    },
+    indecisiveWind = {
+        name = "Indecisive Wind",
+        description = "There's wind that can't decide whether it goes right or left."
     }
 }
 playerRoundData = {}
@@ -151,6 +155,9 @@ math.randomseed(os.time())
 
 activeModifiers = {}
 playersInHole = 0
+
+forcedGravity = nil
+forcedWind = nil
 
 table.shuffle = function(table)
     for i = #table, 2, -1 do
@@ -291,6 +298,15 @@ function eventLoop(currentTime, timeRemaining)
                 end
             end
         end
+
+        if eventLoopTicks % 2 == 0 and isModifierActive('indecisiveWind') then
+            if math.random(1, 2) == 1 then
+                forcedWind = 4.0
+            else
+                forcedWind = -4.0
+            end
+            tfm.exec.setWorldGravity(forcedWind, forcedGravity)
+        end
     end
 end
 
@@ -377,7 +393,19 @@ function eventNewGame()
     end
 
     if isModifierActive('areWeInSpace') then
-        tfm.exec.setWorldGravity(0, 2.5)
+        forcedGravity = 2.5
+    end
+
+    if isModifierActive('indecisiveWind') then
+        if math.random(1, 2) == 1 then
+            forcedWind = 4.0
+        else
+            forcedWind = -4.0
+        end
+    end
+
+    if wind ~= nil or gravity ~= nil then
+        tfm.exec.setWorldGravity(forcedWind, forcedGravity)
     end
 
     if isModifierActive('snowfall') then
@@ -448,7 +476,8 @@ function startNewRound(forcedModifiers)
             activeModifiers[#activeModifiers + 1] = pickedModifier
         end
     end
-
+    forcedGravity = nil
+    forcedWind = nil
     clearMice()
     tfm.exec.disableAllShamanSkills(isModifierActive('skilllessDivine'))
     tfm.exec.setGameTime(2, true)
