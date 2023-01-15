@@ -123,7 +123,7 @@ modifiers = {
     },
     mouseArchery = {
         name = "Mouse archery",
-        description = "You can shoot arrows by pressing Q!",
+        description = "You can shoot arrows every 5 seconds by pressing Q!",
         playerRoundData = {
             lastShotArrow = -1
         }
