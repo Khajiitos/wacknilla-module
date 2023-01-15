@@ -58,6 +58,7 @@ modifiers = {
     meep = {
         name = "Meep!",
         description = "Gives everyone meep.",
+        incompatibilities = { 'miceCanFly' }
     },
     transformations = {
         name = "Transformations",
@@ -85,7 +86,7 @@ modifiers = {
     },
     theresAVampireAmongUs = {
         name = "There's a vampire among us",
-        description = "A random player becomes a vampire."
+        description = "A random player becomes a vampire. Vampirism heals after 10 seconds."
     },
     fallDamage = {
         name = "Fall damage",
@@ -93,9 +94,26 @@ modifiers = {
     },
     snowfall = {
         name = "Snowfall",
-        description = "It's snowing! <font size='4'>(snowballs are buffed too!)</font>"
+        description = "It's snowing! (snowballs are buffed too!)"
+    },
+    miceCanFly = {
+        name = "Mice can fly?",
+        description = "You can fly by pressing Space!",
+        incompatibilities = { 'meep' }
+    },
+    itsColdOutHere = {
+        name = "It's cold out here",
+        description = "Mice can freeze for around a second occasionally."
+    },
+    anotherLife = {
+        name = "Another life",
+        description = "You get to respawn once after you die.",
+        playerRoundData = {
+            alreadyRespawned = false
+        }
     }
 }
+playerRoundData = {}
 
 eventLoopTicks = 0
 scheduledFunctionCalls = {}
@@ -126,10 +144,34 @@ table.shuffle = function(table)
     return table
 end
 
+table.copy = function(table, deep)
+    deep = deep or false
+    local newTable = {}
+    for i, element in pairs(table) do
+        if type(element) == 'table' then
+            newTable[i] = table.copy(element, deep)
+        else
+            newTable[i] = element
+        end
+    end
+    return newTable
+end
+
+function resetPlayerRoundData(playerName)
+    playerRoundData[playerName] = {}
+    for modifier, modifierData in pairs(modifiers) do
+        if modifierData.playerRoundData then
+            playerRoundData[playerName][modifier] = table.copy(modifierData.playerRoundData)
+        end
+    end
+end
+
 function initPlayer(playerName)
     ui.addPopup(1, 0, "<p align='center'><font size='16'>Welcome to <b>Wacknilla</b>!</font></p>\nThis module is almost like normal vanilla.\nThe difference is that every round will have random modifiers added to it.", playerName, 250, 150, 300, true)
     ui.addTextArea(1, 'Active modifiers', playerName, 625, 25, 165, 25, 0x101010, 0, 0.5, true)
     updateActiveModifiersList(playerName)
+    system.bindKeyboard(playerName, 32, true, true) -- Space
+    resetPlayerRoundData(playerName)
 end
 
 function eventNewPlayer(playerName)
@@ -158,6 +200,11 @@ function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
 end
 
 function eventPlayerDied(playerName)
+    if isModifierActive('anotherLife') and not playerRoundData[playerName].anotherLife.alreadyRespawned then
+        tfm.exec.respawnPlayer(playerName)
+        playerRoundData[playerName].anotherLife.alreadyRespawned = true
+        return
+    end
     tfm.exec.setPlayerScore(playerName, 1, true)
     if getMiceAlive() == 0 then
         startNewRound()
@@ -166,6 +213,7 @@ end
 
 function clearMice()
     for player, playerData in pairs(tfm.get.room.playerList) do
+        resetPlayerRoundData(player)
         tfm.exec.giveTransformations(player, false)
         for player2, playerData2 in pairs(tfm.get.room.playerList) do
             if player ~= player2 then
@@ -180,7 +228,6 @@ function updateActiveModifiersList(playerName)
 end
 
 function eventLoop(currentTime, timeRemaining)
-
     for i, scheduledFunctionCall in ipairs(scheduledFunctionCalls) do
         if eventLoopTicks >= scheduledFunctionCall.tick then
             scheduledFunctionCall.func()
@@ -238,7 +285,6 @@ function isModifierActive(modifierName)
 end
 
 function eventNewGame()
-
     for i, scheduledFunctionCall in ipairs(scheduledFunctionCalls) do
         if scheduledFunctionCall.forgetAfterNewRound then
             table.remove(scheduledFunctionCalls, i)
@@ -300,10 +346,31 @@ function eventNewGame()
         tfm.exec.setWorldGravity(0, 2.5)
     end
 
-    if (isModifierActive('snowfall')) then
+    if isModifierActive('snowfall') then
         tfm.exec.snow(120, 100)
     else
         tfm.exec.snow(0, 0)
+    end
+
+    if isModifierActive('itsColdOutHere') then
+        itsColdOutHereLoopFunc = function()
+            doLater(function()
+                itsColdOutHereLoopFunc()
+                local freeze = math.random(1, 2) == 1
+                if freeze then
+                    local playerNames = {}
+                    for player, playerData in pairs(tfm.get.room.playerList) do
+                        playerNames[#playerNames + 1] = player
+                    end
+                    local chosenPlayer = playerNames[math.random(1, #playerNames)]
+                    tfm.exec.freezePlayer(chosenPlayer, true)
+                    doLater(function()
+                        tfm.exec.freezePlayer(chosenPlayer, false)
+                    end, 2, true)
+                end
+            end, 10, true)
+        end
+        doLater(itsColdOutHereLoopFunc, 10, true)
     end
 end
 
@@ -326,18 +393,18 @@ end
 function startNewRound(forcedModifiers)
     activeModifiers = {}
 
+    if forcedModifiers then
+        for i, forcedModifier in pairs(forcedModifiers) do
+            activeModifiers[#activeModifiers + 1] = forcedModifier
+        end
+    end
+
     local iterations = math.random(1, math.min(3, #modifierNames))
 
     for i = 1, iterations do
         local pickedModifier = modifierNames[math.random(1, #modifierNames)]
         if canAddModifier(pickedModifier) then
             activeModifiers[#activeModifiers + 1] = pickedModifier
-        end
-    end
-
-    if forcedModifiers then
-        for i, forcedModifier in pairs(forcedModifiers) do
-            activeModifiers[#activeModifiers + 1] = forcedModifier
         end
     end
 
@@ -350,6 +417,15 @@ end
 function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
     if getMiceAlive() == 0 then
         startNewRound()
+    end
+end
+
+function eventKeyboard(playerName, keyCode, down, xPlayerPosition, yPlayerPosition)
+    if keyCode == 32 then -- Space
+        if isModifierActive('miceCanFly') then
+            tfm.exec.movePlayer(playerName, 0, 0, true, 0, -60.0, false)
+            tfm.exec.displayParticle(3, xPlayerPosition, yPlayerPosition, 0, 0.4, 0, 0, nil)
+        end
     end
 end
 
@@ -367,7 +443,7 @@ function openActiveModifiersWindow(playerName)
     local textAreaText = '<p align="center"><font size="18" color="#BABD2F"><b>Active modifiers</b></font></p>'
 
     for i, modifier in ipairs(activeModifiers) do
-        textAreaText = textAreaText .. string.format('<p><font size="14">%s</font><br><font size="8" color="#AAAAAA">%s</p><br>', modifiers[modifier].name, modifiers[modifier].description)
+        textAreaText = textAreaText .. string.format('<p><font size="14" color="#98E2EB">%s</font><br><font size="8" color="#AAAAAA">%s</p><br>', modifiers[modifier].name, modifiers[modifier].description)
     end
 
     ui.addTextArea(2, textAreaText, playerName, 150, 50, 500, 325, 0x101010, 0, 0.95, true)
@@ -403,6 +479,14 @@ function eventChatCommand(playerName, message)
             end
         end
         startNewRound(forcedModifiers)
+    end
+end
+
+function eventPlayerVampire(playerName, vampire)
+    if isModifierActive('theresAVampireAmongUs') then
+        doLater(function()
+            tfm.exec.setVampirePlayer(playerName, false)
+        end, 20, true)
     end
 end
 
