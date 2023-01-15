@@ -131,6 +131,14 @@ modifiers = {
     indecisiveWind = {
         name = "Indecisive Wind",
         description = "There's wind that can't decide whether it goes right or left."
+    },
+    death = {
+        name = "Death",
+        description = "Every second a death bonus spawns at a random position."
+    },
+    shyShamanObjects = {
+        name = "Shy shaman objects",
+        description = "There's a 50% chance that a shaman object won't actually spawn."
     }
 }
 playerRoundData = {}
@@ -307,6 +315,10 @@ function eventLoop(currentTime, timeRemaining)
             end
             tfm.exec.setWorldGravity(forcedWind, forcedGravity)
         end
+
+        if eventLoopTicks % 2 == 0 and isModifierActive('death') then
+            tfm.exec.addBonus(2, math.random(0, 800), math.random(0, 400), 0, 0, true, nil)
+        end
     end
 end
 
@@ -317,11 +329,15 @@ function eventPlayerRespawn(playerName)
 end
 
 function eventSummoningEnd(playerName, objectType, xPosition, yPosition, angle, xSpeed, ySpeed, objectData)
-    objectData.ghost = true
+    --[[
     if isModifierActive('randomGhostObjects') then
-        objectData.ghost = true
         tfm.exec.removeObject(objectData.id)
         tfm.exec.addShamanObject(objectData.type, objectData.x, objectData.y, objectData.angle, objectData.vx, objectData.vy, (math.random(1, 2) == 1))
+    end]]
+    if playerName and isModifierActive('shyShamanObjects') then
+        if math.random(1, 2) == 1 then
+            tfm.exec.removeObject(objectData.id)
+        end
     end
 end
 
