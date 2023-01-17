@@ -139,6 +139,14 @@ modifiers = {
     shyShamanObjects = {
         name = "Shy shaman objects",
         description = "There's a 50% chance that a shaman object won't actually spawn."
+    },
+    ateItOnTheWayBack = {
+        name = "Ate it on the way back",
+        description = "Cheese you picked up can randomly disappear."
+    },
+    microsleeps = {
+        name = "Microsleeps",
+        description = "There's a chance your screen will turn black for split second." 
     }
 }
 playerRoundData = {}
@@ -300,6 +308,38 @@ function eventLoop(currentTime, timeRemaining)
         if eventLoopTicks % 2 == 0 and isModifierActive('death') then
             tfm.exec.addBonus(2, math.random(0, 800), math.random(0, 400), 0, 0, true, nil)
         end
+
+        if eventLoopTicks % 10 == 0 and isModifierActive('ateItOnTheWayBack') then
+            if math.random(1, 3) == 1 then
+                local playersWithCheese = {}
+                for player, playerData in pairs(tfm.get.room.playerList) do
+                    if playerData.hasCheese then
+                        playersWithCheese[#playersWithCheese + 1] = player
+                    end
+                end
+                if #playersWithCheese > 0 then
+                    tfm.exec.removeCheese(playersWithCheese[math.random(1, #playersWithCheese)])
+                end
+            end
+        end
+
+        if eventLoopTicks % 6 == 0 and isModifierActive('microsleeps') then
+            if math.random(1, 3) == 1 then
+                tfm.exec.addPhysicObject(1, 400, 200, {
+                    type = 12, 
+                    width = 800, 
+                    height = 400, 
+                    groundCollision = false,
+                    miceCollision = false,
+                    color = 0x000000,
+                    dynamic = false,
+                    foreground = true
+                })
+                doLater(function()
+                    tfm.exec.removePhysicObject(1)
+                end, 1, true)
+            end
+        end
     end
 end
 
@@ -343,7 +383,7 @@ function eventNewGame()
         if isModifierActive('miniMice') then
             tfm.exec.changePlayerSize(player, 0.4)
         elseif isModifierActive('hugeMice') then
-            tfm.exec.changePlayerSize(player, 2.5)
+            tfm.exec.changePlayerSize(player, 2)
         else
             tfm.exec.changePlayerSize(player, 1.0)
         end
