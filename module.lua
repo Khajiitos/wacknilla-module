@@ -162,7 +162,6 @@ end
 math.randomseed(os.time())
 
 activeModifiers = {}
-playersInHole = 0
 
 forcedGravity = nil
 forcedWind = nil
@@ -212,24 +211,6 @@ function eventNewPlayer(playerName)
     if getMiceAlive() < 3 then
         startNewRound()
     end
-end
-
-function eventPlayerWon(playerName, timeElapsed, timeElapsedSinceRespawn)
-    local playerData = tfm.get.room.playerList[playerName] 
-    if playersInHole == 0 then
-        tfm.exec.setPlayerScore(playerName, 16, true)
-        tfm.exec.displayParticle(19, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
-    elseif playersInHole == 1 then
-        tfm.exec.setPlayerScore(playerName, 14, true)
-        tfm.exec.displayParticle(18, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
-    elseif playersInHole == 2 then
-        tfm.exec.setPlayerScore(playerName, 12, true)
-        tfm.exec.displayParticle(17, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
-    else
-        tfm.exec.setPlayerScore(playerName, 10, true)
-        tfm.exec.displayParticle(16, playerData.x, playerData.y, 0, 5, 0, -5, playerName)
-    end
-    playersInHole = playersInHole + 1
 end
 
 function eventPlayerDied(playerName)
@@ -357,7 +338,6 @@ function eventNewGame()
         end
     end
 
-    playersInHole = 0
     local playerNames = {}
     for player, playerData in pairs(tfm.get.room.playerList) do
         if isModifierActive('miniMice') then
@@ -590,7 +570,6 @@ function eventPlayerVampire(playerName, vampire)
 end
 
 tfm.exec.disableAutoNewGame(true)
-tfm.exec.disableAutoScore(true) -- The auto score system doesn't work for some reason anyway, so we're going to immitate it
 
 for playerName in pairs(tfm.get.room.playerList) do
     initPlayer(playerName)
