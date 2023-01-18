@@ -440,7 +440,7 @@ function eventNewGame()
         end
     end
 
-    if wind ~= nil or gravity ~= nil then
+    if forcedWind ~= nil or forcedGravity ~= nil then
         tfm.exec.setWorldGravity(forcedWind, forcedGravity)
     end
 
