@@ -187,7 +187,9 @@ table.copy = function(table, deep)
     local newTable = {}
     for i, element in pairs(table) do
         if type(element) == 'table' then
-            newTable[i] = table.copy(element, deep)
+            if deep then
+                newTable[i] = table.copy(element, deep)
+            end
         else
             newTable[i] = element
         end
