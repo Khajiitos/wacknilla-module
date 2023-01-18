@@ -377,12 +377,6 @@ function isModifierActive(modifierName)
 end
 
 function eventNewGame()
-    for i, scheduledFunctionCall in ipairs(scheduledFunctionCalls) do
-        if scheduledFunctionCall.forgetAfterNewRound then
-            table.remove(scheduledFunctionCalls, i)
-        end
-    end
-
     local playerNames = {}
     for player, playerData in pairs(tfm.get.room.playerList) do
         if isModifierActive('miniMice') then
@@ -480,7 +474,7 @@ function eventNewGame()
         ui.addTextArea(4, "<p align='center' size='24'><font color='#000000'><b>Squat before you die!</b></font></p>", nil, 200, 375, 400, 25, nil, nil, 0.0, true)
         doLater(function()
             ui.removeTextArea(4, nil)
-        end, 8, true)
+        end, 8, 2)
     end
 end
 
@@ -508,6 +502,15 @@ function startNewRound(forcedModifiers)
             startNewRound(forcedModifiers)
         end, eventLoopTicksRound - 7, true)
         return
+    end
+
+    for i, scheduledFunctionCall in ipairs(scheduledFunctionCalls) do
+        if scheduledFunctionCall.forgetAfterNewRound then
+            if scheduledFunctionCall.forgetAfterNewRound == 2 then
+                scheduledFunctionCall.func()
+            end
+            table.remove(scheduledFunctionCalls, i)
+        end
     end
 
     activeModifiers = {}
