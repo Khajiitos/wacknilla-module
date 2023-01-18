@@ -152,6 +152,8 @@ modifiers = {
 playerRoundData = {}
 
 eventLoopTicks = 0
+eventLoopTicksRound = 0
+
 scheduledFunctionCalls = {}
 
 function doLater(callback, ticksLater, forgetAfterNewRound)
@@ -260,6 +262,7 @@ function eventLoop(currentTime, timeRemaining)
     end
 
     eventLoopTicks = eventLoopTicks + 1
+    eventLoopTicksRound = eventLoopTicksRound + 1
 
     if timeRemaining <= 0 then
         startNewRound()
@@ -498,6 +501,15 @@ function canAddModifier(modifierName)
 end
 
 function startNewRound(forcedModifiers)
+    if not firstNewRoundCalled then
+        firstNewRoundCalled = true
+    elseif eventLoopTicksRound < 7 then
+        doLater(function()
+            startNewRound(forcedModifiers)
+        end, eventLoopTicksRound - 7, true)
+        return
+    end
+
     activeModifiers = {}
 
     if forcedModifiers then
@@ -516,6 +528,7 @@ function startNewRound(forcedModifiers)
     end
     forcedGravity = nil
     forcedWind = nil
+    eventLoopTicksRound = 0
     clearMice()
     tfm.exec.disableAllShamanSkills(isModifierActive('skilllessDivine'))
     tfm.exec.setGameTime(2, true)
