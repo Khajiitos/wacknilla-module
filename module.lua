@@ -355,7 +355,7 @@ function eventSummoningEnd(playerName, objectType, xPosition, yPosition, angle, 
         tfm.exec.removeObject(objectData.id)
         tfm.exec.addShamanObject(objectData.type, objectData.x, objectData.y, objectData.angle, objectData.vx, objectData.vy, (math.random(1, 2) == 1))
     end]]
-    if playerName and isModifierActive('shyShamanObjects') then
+    if objectData.id >= 11000 and isModifierActive('shyShamanObjects') then
         if math.random(1, 2) == 1 then
             tfm.exec.removeObject(objectData.id)
         end
